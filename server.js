@@ -1,4 +1,12 @@
-require('dotenv').config()
+const express = require('express')
+const app = express()
 
-const apiKey = process.env.API_KEY
-console.log('API Key:', apiKey) // Just to test if it loads correctly
+app.get('/api/words', (req, res) => {
+  const wordList = ['apple', 'banana', 'cherry']
+  res.json(wordList)
+})
+
+const PORT = process.env.PORT || 5000
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+})
