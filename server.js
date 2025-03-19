@@ -1,17 +1,15 @@
 const express = require('express')
+const cors = require('cors')
 const { OpenAI } = require('openai')
 const app = express()
+
+app.use(cors())
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
 app.use(express.json())
-
-// Add this line to handle the root URL
-app.get('/', (req, res) => {
-  res.send('Backend API is working!') // A simple message to show the server is running
-})
 
 const classifyWord = async (word) => {
   try {
@@ -55,6 +53,10 @@ app.post('/api/process-words', async (req, res) => {
   }
 
   res.json({ processedWords })
+})
+
+app.get('/', (req, res) => {
+  res.send('Backend API is working!')
 })
 
 const PORT = process.env.PORT || 5000
