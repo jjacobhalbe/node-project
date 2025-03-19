@@ -8,6 +8,11 @@ const openai = new OpenAI({
 
 app.use(express.json())
 
+// Add this line to handle the root URL
+app.get('/', (req, res) => {
+  res.send('Backend API is working!') // A simple message to show the server is running
+})
+
 const classifyWord = async (word) => {
   try {
     const response = await openai.chat.completions.create({
