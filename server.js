@@ -2,20 +2,16 @@ const express = require('express')
 const { OpenAI } = require('openai')
 const app = express()
 
-// Initialize OpenAI with your API key
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Make sure to store the API key in .env
+  apiKey: process.env.OPENAI_API_KEY,
 })
 
-// Middleware to parse JSON requests
 app.use(express.json())
 
-// Function to ask OpenAI to classify a word
 const classifyWord = async (word) => {
   try {
-    // Send the word to OpenAI to classify based on Cambridge Dictionary standards
     const response = await openai.chat.completions.create({
-      model: 'gpt-4', // or 'gpt-3.5-turbo' depending on what you're using
+      model: 'gpt-3.5-turbo',
       messages: [
         {
           role: 'system',
@@ -29,38 +25,33 @@ const classifyWord = async (word) => {
       ],
     })
 
-    // Extract the classification level from the response
     const level = response.choices[0].message.content.trim()
 
-    // Validate the level, making sure it is one of the allowed levels
     const validLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'unknown']
     if (!validLevels.includes(level)) {
-      return { word, level: 'unknown' } // Default to unknown if the classification is invalid
+      return { word, level: 'unknown' }
     }
 
     return { word, level }
   } catch (error) {
     console.error('Error classifying word:', error)
-    return { word, level: 'unknown' } // Return 'unknown' if there's an error
+    return { word, level: 'unknown' }
   }
 }
 
-// POST route to process words with AI
 app.post('/api/process-words', async (req, res) => {
   const wordList = req.body.words
 
-  // Classify each word in the list using OpenAI
   const processedWords = []
 
   for (const word of wordList) {
     const classifiedWord = await classifyWord(word)
-    processedWords.push(classifiedWord) // Push the { word, level } pair
+    processedWords.push(classifiedWord)
   }
 
-  res.json({ processedWords }) // Return the word-level pairs
+  res.json({ processedWords })
 })
 
-// Port for the server to listen on
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
