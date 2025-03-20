@@ -43,6 +43,11 @@ const classifyWord = async (word) => {
   }
 }
 
+app.get('/api/word-list', async (req, res) => {
+  const words = await getAllWords()
+  res.json(words)
+})
+
 app.post('/api/process-words', async (req, res) => {
   const wordList = req.body.words
 
@@ -60,7 +65,7 @@ app.get('/', (req, res) => {
   res.send('Backend API is working!')
 })
 
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 8080
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
