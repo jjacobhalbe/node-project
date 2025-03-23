@@ -16,24 +16,27 @@ const openai = new OpenAI({
 // Function to read words from words.json
 const readWordsFromFile = () => {
   const filePath = path.join(__dirname, 'data', 'words.json')
-  const rawData = fs.readFileSync(filePath, 'utf8')
-  return JSON.parse(rawData)
+  try {
+    const rawData = fs.readFileSync(filePath, 'utf8')
+    return JSON.parse(rawData)
+  } catch (err) {
+    console.error('Error reading words.json:', err)
+    return []
+  }
 }
 
-// Function to classify a batch of words via OpenAI
+// Function to classify a batch of words using OpenAI
 const classifyWordsBatch = async (words) => {
   try {
     const messages = [
       {
         role: 'system',
         content:
-          'You are a language classification AI. You are tasked with classifying English words into levels based on the Common European Framework of Reference for Languages (CEFR). The levels are A1, A2, B1, B2, C1, C2. If the word does not exist in the dictionary, assign the level "unknown". Please return each word with its respective level as a key-value pair, one per line.',
+          'You are a language classification AI. Your task is to classify English words into CEFR levels: A1, A2, B1, B2, C1, C2. If a word is not found in the dictionary, assign "unknown". Return a JSON object where keys are words and values are levels.',
       },
       {
         role: 'user',
-        content: `Classify the following words based on the Cambridge Dictionary: ${words.join(
-          ', '
-        )}`,
+        content: `Classify these words: ${words.join(', ')}`,
       },
     ]
 
@@ -42,42 +45,62 @@ const classifyWordsBatch = async (words) => {
       messages,
     })
 
-    // Split the output by new lines; each line should correspond to one word's classification
-    const levels = response.choices[0].message.content.trim().split('\n')
+    // Try parsing the response as JSON.
+    let result = {}
+    const responseText = response.choices[0].message.content.trim()
+    try {
+      result = JSON.parse(responseText)
+    } catch (parseError) {
+      // If parsing fails, fallback to splitting by newlines.
+      const lines = responseText.split('\n')
+      words.forEach((word, index) => {
+        result[word] = lines[index] ? lines[index].trim() : 'unknown'
+      })
+    }
 
-    // Map each word to its corresponding classification (or 'unknown' if missing)
-    const classifiedWords = words.map((word, index) => {
-      const level = levels[index] ? levels[index].trim() : 'unknown'
-      return { word, level }
-    })
-
-    return classifiedWords
+    // Map each word to its classification
+    return words.map((word) => ({ word, level: result[word] || 'unknown' }))
   } catch (error) {
     console.error('Error classifying words batch:', error)
-    // If there's an error (like rate limit), return all words with "unknown" level
     return words.map((word) => ({ word, level: 'unknown' }))
   }
 }
 
-// POST endpoint: Process words in batches
-app.post('/api/process-words', async (req, res) => {
-  // In this implementation, we ignore any words sent in the request body
-  // and instead read the full list from words.json
+// New endpoint: Process all words and save classified results
+app.post('/api/classify-all', async (req, res) => {
+  // We ignore any payload; instead, read from words.json
   const wordsData = readWordsFromFile()
-  // Assuming words.json is an array of objects like { "word": "apple" },
-  // extract the word strings:
-  const words = wordsData.map((item) => item.word || item)
+  // Expecting wordsData to be an array of objects with a "word" property (or simple strings)
+  const words = wordsData.map((item) =>
+    typeof item === 'string' ? item : item.word
+  )
+
   const processedWords = []
-  const batchSize = 50
+  const batchSize = 50 // Adjust as needed to manage API usage
+
   for (let i = 0; i < words.length; i += batchSize) {
     const batch = words.slice(i, i + batchSize)
     const classifiedBatch = await classifyWordsBatch(batch)
     processedWords.push(...classifiedBatch)
   }
+
+  // Save classified words to a file (optional)
+  const outputPath = path.join(__dirname, 'data', 'classifiedWords.json')
+  try {
+    fs.writeFileSync(
+      outputPath,
+      JSON.stringify(processedWords, null, 2),
+      'utf8'
+    )
+    console.log(`Classified words saved to ${outputPath}`)
+  } catch (writeError) {
+    console.error('Error writing classified words:', writeError)
+  }
+
   res.json({ processedWords })
 })
 
-// Root endpoint for testing
+// A simple endpoint to check that the backend is up
 app.get('/', (req, res) => {
   res.send('Backend API is working!')
 })
