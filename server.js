@@ -72,7 +72,8 @@ const classifyWordsBatch = async (words) => {
   }
 }
 
-app.post('/api/classify-all', async (req, res) => {
+app.post('/api/classify', async (req, res) => {
+  console.log('Received request to classify words')
   const allWords = readWordsFromFile().map((item) =>
     typeof item === 'string' ? item : item.word
   )
