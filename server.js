@@ -6,26 +6,33 @@ const fs = require('fs')
 const path = require('path')
 const app = express()
 
-app.use(cors())
+app.use(cors({ origin: 'http://localhost:5173' })) // Allow only frontend
 app.use(express.json())
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-// Function to read words from words.json
+const WORDS_FILE = path.join(__dirname, 'data', 'words.json')
+const CLASSIFIED_FILE = path.join(__dirname, 'data', 'classifiedWords.json')
+
+// Read words from file
 const readWordsFromFile = () => {
-  const filePath = path.join(__dirname, 'data', 'words.json')
   try {
-    const rawData = fs.readFileSync(filePath, 'utf8')
-    return JSON.parse(rawData)
+    return JSON.parse(fs.readFileSync(WORDS_FILE, 'utf8'))
   } catch (err) {
     console.error('Error reading words.json:', err)
     return []
   }
 }
 
-// Function to classify a batch of words using OpenAI
+const readClassifiedWords = () => {
+  try {
+    return JSON.parse(fs.readFileSync(CLASSIFIED_FILE, 'utf8'))
+  } catch (err) {
+    console.log('No existing classified words found.')
+    return []
+  }
+}
+
 const classifyWordsBatch = async (words) => {
   try {
     const messages = [
@@ -45,20 +52,19 @@ const classifyWordsBatch = async (words) => {
       messages,
     })
 
-    // Try parsing the response as JSON.
-    let result = {}
     const responseText = response.choices[0].message.content.trim()
+    let result = {}
+
     try {
       result = JSON.parse(responseText)
     } catch (parseError) {
-      // If parsing fails, fallback to splitting by newlines.
+      console.warn('Failed to parse OpenAI response as JSON. Using fallback.')
       const lines = responseText.split('\n')
       words.forEach((word, index) => {
         result[word] = lines[index] ? lines[index].trim() : 'unknown'
       })
     }
 
-    // Map each word to its classification
     return words.map((word) => ({ word, level: result[word] || 'unknown' }))
   } catch (error) {
     console.error('Error classifying words batch:', error)
@@ -66,46 +72,45 @@ const classifyWordsBatch = async (words) => {
   }
 }
 
-// New endpoint: Process all words and save classified results
 app.post('/api/classify-all', async (req, res) => {
-  // We ignore any payload; instead, read from words.json
-  const wordsData = readWordsFromFile()
-  // Expecting wordsData to be an array of objects with a "word" property (or simple strings)
-  const words = wordsData.map((item) =>
+  const allWords = readWordsFromFile().map((item) =>
     typeof item === 'string' ? item : item.word
   )
 
-  const processedWords = []
-  const batchSize = 50 // Adjust as needed to manage API usage
+  let classifiedWords = readClassifiedWords()
+  const classifiedSet = new Set(classifiedWords.map((w) => w.word))
 
-  for (let i = 0; i < words.length; i += batchSize) {
-    const batch = words.slice(i, i + batchSize)
-    const classifiedBatch = await classifyWordsBatch(batch)
-    processedWords.push(...classifiedBatch)
+  const newWords = allWords.filter((word) => !classifiedSet.has(word))
+
+  if (newWords.length === 0) {
+    console.log('No new words to classify. Returning existing data.')
+    return res.json({ processedWords: classifiedWords })
   }
 
-  // Save classified words to a file (optional)
-  const outputPath = path.join(__dirname, 'data', 'classifiedWords.json')
+  console.log(`Classifying ${newWords.length} new words...`)
+
+  const batchSize = 50
+  for (let i = 0; i < newWords.length; i += batchSize) {
+    const batch = newWords.slice(i, i + batchSize)
+    const classifiedBatch = await classifyWordsBatch(batch)
+    classifiedWords.push(...classifiedBatch)
+  }
+
   try {
     fs.writeFileSync(
-      outputPath,
-      JSON.stringify(processedWords, null, 2),
+      CLASSIFIED_FILE,
+      JSON.stringify(classifiedWords, null, 2),
       'utf8'
     )
-    console.log(`Classified words saved to ${outputPath}`)
+    console.log(`Updated classified words saved to ${CLASSIFIED_FILE}`)
   } catch (writeError) {
     console.error('Error writing classified words:', writeError)
   }
 
-  res.json({ processedWords })
+  res.json({ processedWords: classifiedWords })
 })
 
-// A simple endpoint to check that the backend is up
-app.get('/', (req, res) => {
-  res.send('Backend API is working!')
-})
+app.get('/', (req, res) => res.send('Backend API is working!'))
 
 const PORT = process.env.PORT || 8080
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
