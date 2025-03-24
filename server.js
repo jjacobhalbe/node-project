@@ -4,9 +4,9 @@ const cors = require('cors')
 const { OpenAI } = require('openai')
 const fs = require('fs')
 const path = require('path')
-const app = express()
 
-app.use(cors({ origin: 'http://localhost:5173' })) // Allow only frontend
+const app = express()
+app.use(cors({ origin: 'http://localhost:5173' }))
 app.use(express.json())
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -14,7 +14,6 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const WORDS_FILE = path.join(__dirname, 'data', 'words.json')
 const CLASSIFIED_FILE = path.join(__dirname, 'data', 'classifiedWords.json')
 
-// Read words from file
 const readWordsFromFile = () => {
   try {
     return JSON.parse(fs.readFileSync(WORDS_FILE, 'utf8'))
@@ -35,6 +34,8 @@ const readClassifiedWords = () => {
 
 const classifyWordsBatch = async (words) => {
   try {
+    console.log(`Sending batch of ${words.length} words to OpenAI...`)
+
     const messages = [
       {
         role: 'system',
@@ -52,7 +53,9 @@ const classifyWordsBatch = async (words) => {
       messages,
     })
 
-    const responseText = response.choices[0].message.content.trim()
+    console.log('Received response from OpenAI:', response)
+
+    const responseText = response.choices[0]?.message?.content?.trim()
     let result = {}
 
     try {
@@ -73,7 +76,7 @@ const classifyWordsBatch = async (words) => {
 }
 
 app.post('/api/classify', async (req, res) => {
-  console.log('Received request to classify words')
+  console.log('Received request to classify words.')
   const allWords = readWordsFromFile().map((item) =>
     typeof item === 'string' ? item : item.word
   )
