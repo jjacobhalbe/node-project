@@ -6,7 +6,7 @@ const fs = require('fs')
 const path = require('path')
 
 const app = express()
-app.use(cors({ origin: 'http://localhost:5173' }))
+app.use(cors({ origin: 'http://localhost:5173' })) // Allow only frontend
 app.use(express.json())
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -14,6 +14,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const WORDS_FILE = path.join(__dirname, 'data', 'words.json')
 const CLASSIFIED_FILE = path.join(__dirname, 'data', 'classifiedWords.json')
 
+// Read words from file
 const readWordsFromFile = () => {
   try {
     return JSON.parse(fs.readFileSync(WORDS_FILE, 'utf8'))
@@ -23,6 +24,7 @@ const readWordsFromFile = () => {
   }
 }
 
+// Read already classified words
 const readClassifiedWords = () => {
   try {
     return JSON.parse(fs.readFileSync(CLASSIFIED_FILE, 'utf8'))
@@ -32,10 +34,9 @@ const readClassifiedWords = () => {
   }
 }
 
+// Send words to OpenAI for classification
 const classifyWordsBatch = async (words) => {
   try {
-    console.log(`Sending batch of ${words.length} words to OpenAI...`)
-
     const messages = [
       {
         role: 'system',
@@ -53,9 +54,7 @@ const classifyWordsBatch = async (words) => {
       messages,
     })
 
-    console.log('Received response from OpenAI:', response)
-
-    const responseText = response.choices[0]?.message?.content?.trim()
+    const responseText = response.choices[0].message.content.trim()
     let result = {}
 
     try {
@@ -75,8 +74,9 @@ const classifyWordsBatch = async (words) => {
   }
 }
 
+// API to classify words
 app.post('/api/classify', async (req, res) => {
-  console.log('Received request to classify words.')
+  console.log('Received request to classify words')
   const allWords = readWordsFromFile().map((item) =>
     typeof item === 'string' ? item : item.word
   )
@@ -114,6 +114,7 @@ app.post('/api/classify', async (req, res) => {
   res.json({ processedWords: classifiedWords })
 })
 
+// Root route
 app.get('/', (req, res) => res.send('Backend API is working!'))
 
 const PORT = process.env.PORT || 8080
