@@ -17,7 +17,9 @@ const CLASSIFIED_FILE = path.join(__dirname, 'data', 'classifiedWords.json')
 
 const readWordsFromFile = () => {
   try {
-    return require(WORDS_FILE)
+    const words = JSON.parse(fs.readFileSync(WORDS_FILE, 'utf8'))
+    console.log(`Loaded ${words.length} words from words.json`)
+    return words
   } catch (err) {
     console.error('Error reading words.json:', err)
     return []
@@ -36,6 +38,8 @@ const readClassifiedWords = () => {
 
 const classifyWordsBatch = async (words) => {
   try {
+    console.log(`Sending batch of ${words.length} words to OpenAI`)
+
     const messages = [
       {
         role: 'system',
@@ -49,17 +53,25 @@ const classifyWordsBatch = async (words) => {
     ]
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4-turbo',
       messages,
     })
 
-    const responseText = response.choices[0].message.content.trim()
+    console.log('OpenAI response received:', response)
+
+    const responseText = response.choices[0]?.message?.content?.trim()
     let result = {}
 
     try {
       result = JSON.parse(responseText)
+      console.log(
+        `Parsed OpenAI response successfully. Sample:`,
+        Object.entries(result).slice(0, 5)
+      )
     } catch (parseError) {
       console.warn('Failed to parse OpenAI response as JSON. Using fallback.')
+      console.log('Raw OpenAI response:', responseText)
+
       const lines = responseText.split('\n')
       words.forEach((word, index) => {
         result[word] = lines[index] ? lines[index].trim() : 'unknown'
@@ -75,11 +87,14 @@ const classifyWordsBatch = async (words) => {
 
 app.post('/api/classify', async (req, res) => {
   console.log('Received request to classify words')
+
   const allWords = readWordsFromFile().map((item) => item.word)
+  console.log(`Total words loaded: ${allWords.length}`)
 
   let classifiedWords = readClassifiedWords()
-  const classifiedSet = new Set(classifiedWords.map((w) => w.word))
+  console.log(`Previously classified words loaded: ${classifiedWords.length}`)
 
+  const classifiedSet = new Set(classifiedWords.map((w) => w.word))
   const newWords = allWords.filter((word) => !classifiedSet.has(word))
 
   if (newWords.length === 0) {
@@ -92,6 +107,11 @@ app.post('/api/classify', async (req, res) => {
   const batchSize = 50
   for (let i = 0; i < newWords.length; i += batchSize) {
     const batch = newWords.slice(i, i + batchSize)
+    console.log(
+      `Processing batch ${i / batchSize + 1} of ${Math.ceil(
+        newWords.length / batchSize
+      )}`
+    )
     const classifiedBatch = await classifyWordsBatch(batch)
     classifiedWords.push(...classifiedBatch)
   }
