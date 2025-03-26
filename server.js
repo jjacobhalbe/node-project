@@ -14,7 +14,6 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const WORDS_FILE = path.join(__dirname, 'data', 'words.json')
 const CLASSIFIED_FILE = path.join(__dirname, 'data', 'classifiedWords.json')
 
-// Read words from file
 const readWordsFromFile = () => {
   try {
     return JSON.parse(fs.readFileSync(WORDS_FILE, 'utf8'))
@@ -24,7 +23,6 @@ const readWordsFromFile = () => {
   }
 }
 
-// Read already classified words
 const readClassifiedWords = () => {
   try {
     return JSON.parse(fs.readFileSync(CLASSIFIED_FILE, 'utf8'))
@@ -34,7 +32,6 @@ const readClassifiedWords = () => {
   }
 }
 
-// Send words to OpenAI for classification
 const classifyWordsBatch = async (words) => {
   try {
     const messages = [
@@ -74,7 +71,6 @@ const classifyWordsBatch = async (words) => {
   }
 }
 
-// API to classify words
 app.post('/api/classify', async (req, res) => {
   console.log('Received request to classify words')
   const allWords = readWordsFromFile().map((item) =>
