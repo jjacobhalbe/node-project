@@ -6,7 +6,8 @@ const fs = require('fs')
 const path = require('path')
 
 const app = express()
-app.use(cors({ origin: 'http://localhost:5173' })) // Allow only frontend
+
+app.use(cors({ origin: 'http://localhost:5173' }))
 app.use(express.json())
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -16,16 +17,17 @@ const CLASSIFIED_FILE = path.join(__dirname, 'data', 'classifiedWords.json')
 
 const readWordsFromFile = () => {
   try {
-    return JSON.parse(fs.readFileSync(WORDS_FILE, 'utf8'))
+    return require(WORDS_FILE)
   } catch (err) {
     console.error('Error reading words.json:', err)
     return []
   }
 }
 
+// Read classified words from file
 const readClassifiedWords = () => {
   try {
-    return JSON.parse(fs.readFileSync(CLASSIFIED_FILE, 'utf8'))
+    return require(CLASSIFIED_FILE)
   } catch (err) {
     console.log('No existing classified words found.')
     return []
@@ -73,9 +75,7 @@ const classifyWordsBatch = async (words) => {
 
 app.post('/api/classify', async (req, res) => {
   console.log('Received request to classify words')
-  const allWords = readWordsFromFile().map((item) =>
-    typeof item === 'string' ? item : item.word
-  )
+  const allWords = readWordsFromFile().map((item) => item.word)
 
   let classifiedWords = readClassifiedWords()
   const classifiedSet = new Set(classifiedWords.map((w) => w.word))
@@ -110,7 +110,6 @@ app.post('/api/classify', async (req, res) => {
   res.json({ processedWords: classifiedWords })
 })
 
-// Root route
 app.get('/', (req, res) => res.send('Backend API is working!'))
 
 const PORT = process.env.PORT || 8080
