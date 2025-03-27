@@ -10,7 +10,7 @@ const app = express()
 app.use(cors({ origin: 'http://localhost:5173' }))
 app.use(express.json())
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const openai = new OpenAI({ apiKey: process.env.API_KEY })
 
 const WORDS_FILE = path.join(__dirname, 'data', 'words.json')
 const CLASSIFIED_FILE = path.join(__dirname, 'data', 'classifiedWords.json')
