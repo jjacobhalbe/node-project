@@ -85,10 +85,10 @@ const classifyWordsBatch = async (words) => {
 }
 
 app.post('/api/classify', async (req, res) => {
-  console.log('✅ Received request to classify words') // LOG 1
+  console.log('✅ Received request to classify words')
 
   const allWords = readWordsFromFile().map((item) => item.word)
-  console.log(`✅ Loaded ${allWords.length} words from words.json`) // LOG 2
+  console.log(`✅ Loaded ${allWords.length} words from words.json`)
 
   if (allWords.length === 0) {
     console.error('❌ ERROR: words.json is empty or not loaded!')
@@ -105,12 +105,12 @@ app.post('/api/classify', async (req, res) => {
     return res.json({ processedWords: classifiedWords })
   }
 
-  console.log(`📦 Sending ${newWords.length} words to OpenAI...`) // LOG 3
+  console.log(`📦 Sending ${newWords.length} words to OpenAI...`)
 
   const batchSize = 50
   for (let i = 0; i < newWords.length; i += batchSize) {
     const batch = newWords.slice(i, i + batchSize)
-    console.log(`📤 Sending batch:`, batch) // LOG 4
+    console.log(`📤 Sending batch:`, batch)
     const classifiedBatch = await classifyWordsBatch(batch)
     classifiedWords.push(...classifiedBatch)
   }
@@ -121,7 +121,7 @@ app.post('/api/classify', async (req, res) => {
       JSON.stringify(classifiedWords, null, 2),
       'utf8'
     )
-    console.log(`✅ Saved classified words to ${CLASSIFIED_FILE}`) // LOG 5
+    console.log(`✅ Saved classified words to ${CLASSIFIED_FILE}`)
   } catch (writeError) {
     console.error('❌ ERROR: Failed to write classifiedWords.json:', writeError)
   }
@@ -129,7 +129,10 @@ app.post('/api/classify', async (req, res) => {
   res.json({ processedWords: classifiedWords })
 })
 
-app.get('/', (req, res) => res.send('Backend API is working!'))
+app.get('/', (req, res) => {
+  console.log('✅ Backend API was accessed!')
+  res.send('Backend API is working!')
+})
 
 const PORT = process.env.PORT || 8080
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
