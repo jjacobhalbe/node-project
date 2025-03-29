@@ -4,7 +4,8 @@ const cors = require('cors')
 const { OpenAI } = require('openai')
 const fs = require('fs')
 const path = require('path')
-
+fs.writeFileSync('data/test.json', JSON.stringify({ test: 'Hello' }), 'utf8')
+console.log('✅ File test.json written successfully!')
 const app = express()
 
 // CORS Configuration
@@ -47,6 +48,10 @@ const readClassifiedWords = () => {
 
 // Classify words batch with OpenAI
 const classifyWordsBatch = async (words) => {
+  console.log(
+    '🔍 Sending request to OpenAI:',
+    JSON.stringify(messages, null, 2)
+  )
   try {
     console.log(`📤 Sending batch of ${words.length} words to OpenAI`)
 
