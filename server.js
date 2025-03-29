@@ -14,11 +14,11 @@ app.use(express.json())
 // Debug: Log API key status
 console.log(
   '🔑 OpenAI API Key (first 5 chars):',
-  process.env.OPENAI_API_KEY?.slice(0, 5) || 'Not loaded!'
+  process.env.API_KEY?.slice(0, 5) || 'Not loaded!'
 )
 
 // Initialize OpenAI
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const openai = new OpenAI({ apiKey: process.env.API_KEY })
 
 const WORDS_FILE = path.join(__dirname, 'data', 'words.json')
 const CLASSIFIED_FILE = path.join(__dirname, 'data', 'classifiedWords.json')
