@@ -85,32 +85,32 @@ const classifyWordsBatch = async (words) => {
 }
 
 app.post('/api/classify', async (req, res) => {
-  console.log('Received request to classify words')
+  console.log('✅ Received request to classify words') // LOG 1
 
   const allWords = readWordsFromFile().map((item) => item.word)
-  console.log(`Total words loaded: ${allWords.length}`)
+  console.log(`✅ Loaded ${allWords.length} words from words.json`) // LOG 2
+
+  if (allWords.length === 0) {
+    console.error('❌ ERROR: words.json is empty or not loaded!')
+    return res.status(500).json({ error: 'words.json is empty or missing' })
+  }
 
   let classifiedWords = readClassifiedWords()
-  console.log(`Previously classified words loaded: ${classifiedWords.length}`)
-
   const classifiedSet = new Set(classifiedWords.map((w) => w.word))
+
   const newWords = allWords.filter((word) => !classifiedSet.has(word))
 
   if (newWords.length === 0) {
-    console.log('No new words to classify. Returning existing data.')
+    console.log('✅ No new words to classify. Returning existing data.')
     return res.json({ processedWords: classifiedWords })
   }
 
-  console.log(`Classifying ${newWords.length} new words...`)
+  console.log(`📦 Sending ${newWords.length} words to OpenAI...`) // LOG 3
 
   const batchSize = 50
   for (let i = 0; i < newWords.length; i += batchSize) {
     const batch = newWords.slice(i, i + batchSize)
-    console.log(
-      `Processing batch ${i / batchSize + 1} of ${Math.ceil(
-        newWords.length / batchSize
-      )}`
-    )
+    console.log(`📤 Sending batch:`, batch) // LOG 4
     const classifiedBatch = await classifyWordsBatch(batch)
     classifiedWords.push(...classifiedBatch)
   }
@@ -121,9 +121,9 @@ app.post('/api/classify', async (req, res) => {
       JSON.stringify(classifiedWords, null, 2),
       'utf8'
     )
-    console.log(`Updated classified words saved to ${CLASSIFIED_FILE}`)
+    console.log(`✅ Saved classified words to ${CLASSIFIED_FILE}`) // LOG 5
   } catch (writeError) {
-    console.error('Error writing classified words:', writeError)
+    console.error('❌ ERROR: Failed to write classifiedWords.json:', writeError)
   }
 
   res.json({ processedWords: classifiedWords })
