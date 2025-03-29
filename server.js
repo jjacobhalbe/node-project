@@ -26,7 +26,6 @@ const readWordsFromFile = () => {
   }
 }
 
-// Read classified words from file
 const readClassifiedWords = () => {
   try {
     return require(CLASSIFIED_FILE)
