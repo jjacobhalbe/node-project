@@ -1,4 +1,8 @@
 require('dotenv').config()
+console.log(
+  '🔑 OpenAI API Key (first 5 chars):',
+  process.env.OPENAI_API_KEY?.slice(0, 5) || 'Not loaded!'
+)
 const express = require('express')
 const cors = require('cors')
 const { OpenAI } = require('openai')
