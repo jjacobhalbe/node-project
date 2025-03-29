@@ -4,8 +4,6 @@ const cors = require('cors')
 const { OpenAI } = require('openai')
 const fs = require('fs')
 const path = require('path')
-fs.writeFileSync('data/test.json', JSON.stringify({ test: 'Hello' }), 'utf8')
-console.log('✅ File test.json written successfully!')
 const app = express()
 
 // CORS Configuration
@@ -48,10 +46,7 @@ const readClassifiedWords = () => {
 
 // Classify words batch with OpenAI
 const classifyWordsBatch = async (words) => {
-  console.log(
-    '🔍 Sending request to OpenAI:',
-    JSON.stringify(messages, null, 2)
-  )
+  console.log('🔍 Sending request to OpenAI:', JSON.stringify(words, null, 2))
   try {
     console.log(`📤 Sending batch of ${words.length} words to OpenAI`)
 
@@ -104,7 +99,7 @@ const classifyWordsBatch = async (words) => {
 
 // Endpoint to classify words
 app.post('/api/classify', async (req, res) => {
-  console.log('✅ Received request to classify words.')
+  console.log('✅ Received POST request to classify words.')
 
   const allWords = readWordsFromFile().map((item) => item.word)
   console.log(`✅ Loaded ${allWords.length} words from words.json`)
