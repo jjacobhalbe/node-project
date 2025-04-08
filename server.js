@@ -67,7 +67,13 @@ const classifyWordsBatch = async (words) => {
     let result = {}
 
     try {
-      result = JSON.parse(responseText)
+      let jsonString = responseText
+      const match = responseText.match(/```json\s*([\s\S]*?)\s*```/)
+      if (match) {
+        jsonString = match[1]
+      }
+
+      result = JSON.parse(jsonString)
       console.log(
         `✅ Parsed OpenAI response. Sample:`,
         Object.entries(result).slice(0, 5)
