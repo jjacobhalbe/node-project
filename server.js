@@ -8,7 +8,6 @@ const app = express()
 
 app.use(cors({ origin: 'http://localhost:5173' }))
 app.use(express.json())
-
 console.log(
   '🔑 OpenAI API Key (first 5 chars):',
   process.env.API_KEY?.slice(0, 5) || 'Not loaded!'
