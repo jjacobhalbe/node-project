@@ -135,6 +135,7 @@ app.post('/api/classify', async (req, res) => {
         'utf8'
       )
       console.log(`💾 Batch saved successfully to ${CLASSIFIED_FILE}`)
+      console.log('✅ Batch saved successfully to classifiedWords.json')
     } catch (writeError) {
       console.error('❌ ERROR saving batch:', writeError)
     }
