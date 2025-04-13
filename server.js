@@ -1,3 +1,4 @@
+/*
 require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
@@ -153,3 +154,4 @@ app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`)
   await classifyAllWords()
 })
+*/
