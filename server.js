@@ -18,6 +18,7 @@ const openai = new OpenAI({ apiKey: process.env.API_KEY })
 const WORDS_FILE = path.join(__dirname, 'data', 'words.json')
 const CLASSIFIED_FILE = path.join(__dirname, 'data', 'classifiedWords.json')
 
+// Read words.json
 const readWordsFromFile = () => {
   try {
     const words = JSON.parse(fs.readFileSync(WORDS_FILE, 'utf8'))
@@ -29,6 +30,7 @@ const readWordsFromFile = () => {
   }
 }
 
+// Read existing classifiedWords.json
 const readClassifiedWords = () => {
   try {
     return require(CLASSIFIED_FILE)
@@ -38,29 +40,27 @@ const readClassifiedWords = () => {
   }
 }
 
+// Send batch to OpenAI
 const classifyWordsBatch = async (words) => {
-  console.log('🔍 Sending request to OpenAI:', JSON.stringify(words, null, 2))
+  console.log(`📤 Sending batch of ${words.length} words to OpenAI`)
+
+  const messages = [
+    {
+      role: 'system',
+      content:
+        'You are a language classification AI. Your task is to classify English words into CEFR levels: A1, A2, B1, B2, C1, C2. If a word is not found in the dictionary, assign "unknown". Return a JSON object where keys are words and values are levels.',
+    },
+    {
+      role: 'user',
+      content: `Classify these words: ${words.join(', ')}`,
+    },
+  ]
+
   try {
-    console.log(`📤 Sending batch of ${words.length} words to OpenAI`)
-
-    const messages = [
-      {
-        role: 'system',
-        content:
-          'You are a language classification AI. Your task is to classify English words into CEFR levels: A1, A2, B1, B2, C1, C2. If a word is not found in the dictionary, assign "unknown". Return a JSON object where keys are words and values are levels.',
-      },
-      {
-        role: 'user',
-        content: `Classify these words: ${words.join(', ')}`,
-      },
-    ]
-
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages,
     })
-
-    console.log('✅ OpenAI response received.')
 
     const responseText = response.choices[0]?.message?.content?.trim()
     let result = {}
@@ -68,19 +68,14 @@ const classifyWordsBatch = async (words) => {
     try {
       let jsonString = responseText
       const match = responseText.match(/```json\s*([\s\S]*?)\s*```/)
-      if (match) {
-        jsonString = match[1]
-      }
-
+      if (match) jsonString = match[1]
       result = JSON.parse(jsonString)
       console.log(
         `✅ Parsed OpenAI response. Sample:`,
         Object.entries(result).slice(0, 5)
       )
     } catch (parseError) {
-      console.warn(
-        '⚠️ Failed to parse OpenAI response as JSON. Using fallback.'
-      )
+      console.warn('⚠️ Failed to parse JSON, falling back to line-by-line.')
       console.log('📜 Raw OpenAI response:', responseText)
 
       const lines = responseText.split('\n')
@@ -96,12 +91,11 @@ const classifyWordsBatch = async (words) => {
   }
 }
 
+// Classify all unprocessed words
 const classifyAllWords = async () => {
   const allWords = readWordsFromFile().map((item) => item.word)
-  console.log(`✅ Loaded ${allWords.length} words from words.json`)
-
   if (allWords.length === 0) {
-    console.error('❌ ERROR: words.json is empty or not loaded!')
+    console.error('❌ ERROR: words.json is empty or missing!')
     return
   }
 
@@ -115,11 +109,11 @@ const classifyAllWords = async () => {
   }
 
   console.log(`📦 Found ${newWords.length} new words to classify...`)
-
   const batchSize = 200
+
   for (let i = 0; i < newWords.length; i += batchSize) {
     const batch = newWords.slice(i, i + batchSize)
-    console.log(`📤 Processing batch of ${batch.length} words.`)
+    console.log(`🔄 Processing batch ${i / batchSize + 1}`)
 
     const classifiedBatch = await classifyWordsBatch(batch)
     classifiedWords.push(...classifiedBatch)
@@ -130,7 +124,7 @@ const classifyAllWords = async () => {
         JSON.stringify(classifiedWords, null, 2),
         'utf8'
       )
-      console.log(`💾 Batch saved successfully to ${CLASSIFIED_FILE}`)
+      console.log(`💾 Batch saved successfully to classifiedWords.json`)
     } catch (writeError) {
       console.error('❌ ERROR saving batch:', writeError)
     }
@@ -139,6 +133,7 @@ const classifyAllWords = async () => {
   console.log('🎉 All new words classified and saved!')
 }
 
+// POST route (manual trigger)
 app.post('/api/classify', async (req, res) => {
   console.log('✅ Received POST request to classify words.')
   await classifyAllWords()
@@ -146,11 +141,13 @@ app.post('/api/classify', async (req, res) => {
   res.json({ processedWords: classifiedWords })
 })
 
+// Basic GET route
 app.get('/', (req, res) => {
   console.log('✅ Backend API was accessed!')
   res.send('Backend API is working!')
 })
 
+// Start server and classification
 const PORT = process.env.PORT || 8080
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`)
