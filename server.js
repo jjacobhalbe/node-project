@@ -40,9 +40,6 @@ const levelScores = {
 const classifyWord = (word, levelMap) => {
   const clean = cleanWord(word)
   if (clean.length === 0) return null
-  if (clean.length === 1) {
-    return { word: clean, level: 'singleLetter' }
-  }
   return {
     word: clean,
     level: levelMap.get(clean.toLowerCase()) || 'unknown',
