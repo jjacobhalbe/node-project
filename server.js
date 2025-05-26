@@ -23,8 +23,9 @@ const readClassifiedWords = () => {
 
 const cleanWord = (word) => word.replace(/[^a-zA-Z]/g, '')
 
+// 🛠️ FIXED sentence splitter
 const splitIntoSentences = (text) =>
-  text.match(/[^\.!\?]+[\.!\?]+/g)?.map((sentence) => sentence.trim()) || []
+  text.match(/[^.!?]+[.!?](\s|$)/g)?.map((s) => s.trim()) || []
 
 const levelScores = {
   A1: 1,
@@ -85,6 +86,7 @@ app.post('/api/classify', (req, res) => {
     .filter(Boolean)
 
   const sentences = splitIntoSentences(text)
+
   const sentenceResults = sentences.map((sentence) => {
     const words = sentence
       .trim()
