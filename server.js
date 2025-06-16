@@ -135,10 +135,6 @@ const estimateSentenceLevel = (words) => {
 
 app.post('/api/classify', (req, res) => {
   const { text } = req.body
-  if (!text || typeof text !== 'string') {
-    return res.status(400).json({ error: 'Hey, you need to type something!' }) //implementing new error func
-  }
-
   const classifiedWordsList = readClassifiedWords()
   const levelMap = new Map(
     classifiedWordsList.map(({ word, level }) => [word.toLowerCase(), level])
