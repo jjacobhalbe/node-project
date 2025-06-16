@@ -23,9 +23,76 @@ const readClassifiedWords = () => {
 
 const cleanWord = (word) => word.replace(/[^a-zA-Z]/g, '')
 
-// 🛠️ FIXED sentence splitter
-const splitIntoSentences = (text) =>
-  text.match(/[^.!?]+[.!?](\s|$)/g)?.map((s) => s.trim()) || []
+const splitIntoSentences = (text) => {
+  const result = []
+  const seen = new Set()
+  let remainingText = text.trim()
+
+  while (remainingText.length > 0) {
+    const match = remainingText.match(/[.!?;]/)
+    if (match) {
+      const idx = match.index
+      let sentence = remainingText.slice(0, idx + 1)
+
+      let nextIdx = idx + 1
+      while (
+        nextIdx < remainingText.length &&
+        /[.!?;]/.test(remainingText[nextIdx])
+      ) {
+        nextIdx++
+      }
+
+      while (
+        nextIdx < remainingText.length &&
+        !/[.!?;]/.test(remainingText[nextIdx]) &&
+        remainingText[nextIdx] !== ' '
+      ) {
+        const nextMatch = remainingText.slice(nextIdx).match(/[.!?;]/)
+        if (nextMatch) {
+          const relIdx = nextMatch.index
+          sentence += remainingText.slice(nextIdx, nextIdx + relIdx + 1)
+          nextIdx += relIdx + 1
+
+          while (
+            nextIdx < remainingText.length &&
+            /[.!?;]/.test(remainingText[nextIdx])
+          ) {
+            nextIdx++
+          }
+        } else {
+          sentence += remainingText.slice(nextIdx)
+          nextIdx = remainingText.length
+        }
+      }
+
+      const normalized = sentence
+        .trim()
+        .replace(/[.!?;]+$/, '')
+        .toLowerCase()
+
+      if (!seen.has(normalized)) {
+        result.push(sentence.trim())
+        seen.add(normalized)
+      }
+
+      remainingText = remainingText.slice(nextIdx).trim()
+    } else {
+      const normalized = remainingText
+        .trim()
+        .replace(/[.!?;]+$/, '')
+        .toLowerCase()
+
+      if (!seen.has(normalized)) {
+        result.push(remainingText)
+        seen.add(normalized)
+      }
+
+      break
+    }
+  }
+
+  return result
+}
 
 const levelScores = {
   A1: 1,
@@ -69,9 +136,7 @@ const estimateSentenceLevel = (words) => {
 app.post('/api/classify', (req, res) => {
   const { text } = req.body
   if (!text || typeof text !== 'string') {
-    return res
-      .status(400)
-      .json({ error: 'Invalid input. Expected text string.' })
+    return res.status(400).json({ error: 'Hey, you need to type something!' }) //implementing new error func
   }
 
   const classifiedWordsList = readClassifiedWords()
@@ -86,7 +151,6 @@ app.post('/api/classify', (req, res) => {
     .filter(Boolean)
 
   const sentences = splitIntoSentences(text)
-
   const sentenceResults = sentences.map((sentence) => {
     const words = sentence
       .trim()
