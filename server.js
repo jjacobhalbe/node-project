@@ -3,6 +3,10 @@ const cors = require('cors')
 const fs = require('fs')
 const path = require('path')
 
+const { split } = require('sentence-splitter')
+const WinkTokenizer = require('wink-tokenizer')
+const tokenizer = new WinkTokenizer()
+
 const app = express()
 
 app.use(cors({ origin: 'http://localhost:5173' }))
@@ -21,77 +25,19 @@ const readClassifiedWords = () => {
   }
 }
 
-const cleanWord = (word) => word.replace(/[^a-zA-Z]/g, '')
-
 const splitIntoSentences = (text) => {
-  const result = []
-  const seen = new Set()
-  let remainingText = text.trim()
+  const sentences = split(text)
+    .filter((token) => token.type === 'Sentence')
+    .map((sentenceToken) => sentenceToken.raw.trim())
 
-  while (remainingText.length > 0) {
-    const match = remainingText.match(/[.!?;]/)
-    if (match) {
-      const idx = match.index
-      let sentence = remainingText.slice(0, idx + 1)
+  return [...new Set(sentences)]
+}
 
-      let nextIdx = idx + 1
-      while (
-        nextIdx < remainingText.length &&
-        /[.!?;]/.test(remainingText[nextIdx])
-      ) {
-        nextIdx++
-      }
-
-      while (
-        nextIdx < remainingText.length &&
-        !/[.!?;]/.test(remainingText[nextIdx]) &&
-        remainingText[nextIdx] !== ' '
-      ) {
-        const nextMatch = remainingText.slice(nextIdx).match(/[.!?;]/)
-        if (nextMatch) {
-          const relIdx = nextMatch.index
-          sentence += remainingText.slice(nextIdx, nextIdx + relIdx + 1)
-          nextIdx += relIdx + 1
-
-          while (
-            nextIdx < remainingText.length &&
-            /[.!?;]/.test(remainingText[nextIdx])
-          ) {
-            nextIdx++
-          }
-        } else {
-          sentence += remainingText.slice(nextIdx)
-          nextIdx = remainingText.length
-        }
-      }
-
-      const normalized = sentence
-        .trim()
-        .replace(/[.!?;]+$/, '')
-        .toLowerCase()
-
-      if (!seen.has(normalized)) {
-        result.push(sentence.trim())
-        seen.add(normalized)
-      }
-
-      remainingText = remainingText.slice(nextIdx).trim()
-    } else {
-      const normalized = remainingText
-        .trim()
-        .replace(/[.!?;]+$/, '')
-        .toLowerCase()
-
-      if (!seen.has(normalized)) {
-        result.push(remainingText)
-        seen.add(normalized)
-      }
-
-      break
-    }
-  }
-
-  return result
+const tokenizeWords = (sentence) => {
+  const tokens = tokenizer.tokenize(sentence)
+  return tokens
+    .filter((t) => t.tag === 'word' && /^[a-zA-Z]+$/.test(t.value))
+    .map((t) => t.value)
 }
 
 const levelScores = {
@@ -102,15 +48,14 @@ const levelScores = {
   C1: 5,
   C2: 6,
   unknown: 0,
-  singleLetter: 0,
 }
 
 const classifyWord = (word, levelMap) => {
-  const clean = cleanWord(word)
+  const clean = word.toLowerCase()
   if (clean.length === 0) return null
   return {
     word: clean,
-    level: levelMap.get(clean.toLowerCase()) || 'unknown',
+    level: levelMap.get(clean) || 'unknown',
   }
 }
 
@@ -135,22 +80,35 @@ const estimateSentenceLevel = (words) => {
 
 app.post('/api/classify', (req, res) => {
   const { text } = req.body
+
+  if (!text || typeof text !== 'string') {
+    return res
+      .status(400)
+      .json({ error: 'Invalid input: text is required and must be a string.' })
+  }
+
+  if (/[^a-zA-Z\s.!?]/.test(text)) {
+    return res.status(400).json({
+      error:
+        'Input contains invalid characters. Only letters and punctuation . ! ? allowed.',
+    })
+  }
+
   const classifiedWordsList = readClassifiedWords()
   const levelMap = new Map(
     classifiedWordsList.map(({ word, level }) => [word.toLowerCase(), level])
   )
 
-  const allWords = text
-    .trim()
-    .split(/\s+/)
-    .map((word) => classifyWord(word, levelMap))
+  const allTokens = tokenizer.tokenize(text)
+  const allWords = allTokens
+    .filter((t) => t.tag === 'word' && /^[a-zA-Z]+$/.test(t.value))
+    .map((t) => classifyWord(t.value, levelMap))
     .filter(Boolean)
 
   const sentences = splitIntoSentences(text)
   const sentenceResults = sentences.map((sentence) => {
-    const words = sentence
-      .trim()
-      .split(/\s+/)
+    const wordsRaw = tokenizeWords(sentence)
+    const words = wordsRaw
       .map((word) => classifyWord(word, levelMap))
       .filter(Boolean)
 
