@@ -80,20 +80,6 @@ const estimateSentenceLevel = (words) => {
 
 app.post('/api/classify', (req, res) => {
   const { text } = req.body
-
-  if (!text || typeof text !== 'string') {
-    return res
-      .status(400)
-      .json({ error: 'Invalid input: text is required and must be a string.' })
-  }
-
-  if (/[^a-zA-Z\s.!?]/.test(text)) {
-    return res.status(400).json({
-      error:
-        'Input contains invalid characters. Only letters and punctuation . ! ? allowed.',
-    })
-  }
-
   const classifiedWordsList = readClassifiedWords()
   const levelMap = new Map(
     classifiedWordsList.map(({ word, level }) => [word.toLowerCase(), level])
@@ -129,5 +115,5 @@ app.post('/api/classify', (req, res) => {
 
 const PORT = process.env.PORT || 8080
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`)
+  console.log(`Server running on port ${PORT}`)
 })
